@@ -9,6 +9,16 @@ require_once('Cube.php');
 class Maxparser {
     
     private static $bufferM = null;
+    
+    private static function RFAddrParse(&$messageBin,&$currentPos) {
+        $rfaddr = array(
+            dechex($messageBin[++$currentPos]),
+            dechex($messageBin[++$currentPos]),
+            dechex($messageBin[++$currentPos]),
+        );
+        for ($j=0;$j<3;$j++) if (strlen($rfaddr[$j]) < 2) $rfaddr[$j] = '0' . $rfaddr[$j];
+        return $rfaddr[0] . $rfaddr[1] . $rfaddr[2];
+    }
 
     private static function parseH($message) {
         $parts = explode(',', $message);
@@ -72,13 +82,7 @@ class Maxparser {
             );            
             $rooms[$i]['Roomname'] = substr($message, $currentPos, $rooms[$i]['RoomnameLength']);                    
             $currentPos += $rooms[$i]['RoomnameLength'];
-            $rfaddr = array(
-                dechex($messageBin[++$currentPos]),
-                dechex($messageBin[++$currentPos]),
-                dechex($messageBin[++$currentPos]),
-            );
-            for ($j=0;$j<3;$j++) if (strlen($rfaddr[$j]) < 2) $rfaddr[$j] = '0' . $rfaddr[$j];
-            $rooms[$i]['GroupRFAddress'] = $rfaddr[0] . $rfaddr[1] . $rfaddr[2];
+            $rooms[$i]['GroupRFAddress'] = self::RFAddrParse($messageBin, $currentPos);
         }
         $return['rooms'] = $rooms;
         foreach ($rooms as $room) {
@@ -90,13 +94,7 @@ class Maxparser {
         $devices = array();
         for ($i=0;$i<$return['DevicesCount'];$i++) {
             $devices[$i]['DeviceType'] = $messageBin[++$currentPos];
-            $rfaddr = array(
-                dechex($messageBin[++$currentPos]),
-                dechex($messageBin[++$currentPos]),
-                dechex($messageBin[++$currentPos]),
-            );
-            for ($j=0;$j<3;$j++) if (strlen($rfaddr[$j]) < 2) $rfaddr[$j] = '0' . $rfaddr[$j];
-            $devices[$i]['RFAddress'] = $rfaddr[0] . $rfaddr[1] . $rfaddr[2];
+            $devices[$i]['RFAddress'] = self::RFAddrParse($messageBin, $currentPos);
             $devices[$i]['SerialNumber'] = substr($message, $currentPos, 10);
             $currentPos += 10;
             $devices[$i]['DevicenameLength'] = $messageBin[++$currentPos];
@@ -151,21 +149,13 @@ class Maxparser {
             /* basic information is same for all devices except cube */
             $info = array(
                 'DataLength' => $messageBin[++$currentPos],
-            );
-            $rfaddr = array(
-                dechex($messageBin[++$currentPos]),
-                dechex($messageBin[++$currentPos]),
-                dechex($messageBin[++$currentPos]),
-            );
-            for ($j=0;$j<3;$j++) if (strlen($rfaddr[$j]) < 2) $rfaddr[$j] = '0' . $rfaddr[$j];
-            $info = array_merge($info, array(
-                'AddressOfDevice' => $rfaddr[0] . $rfaddr[1] . $rfaddr[2],
+                'AddressOfDevice' => self::RFAddrParse($messageBin, $currentPos),
                 'DeviceType' => $messageBin[++$currentPos],
                 'RoomId' => $messageBin[++$currentPos],
                 'FirmwareVersion' => $messageBin[++$currentPos],
                 'TestResult' => $messageBin[++$currentPos],
                 'SerialNumber' => substr($parts[1],$currentPos,10),
-            ));
+            );
             $currentPos+=10; // as of SerialNumber read
             
             switch ($device->getType()) {
@@ -204,8 +194,45 @@ class Maxparser {
     
     private static function parseL($message) {
         $message = base64_decode($message);
-        print_r($message);
-        echo PHP_EOL;
+        $messageBin = unpack('C*', $message);
+        $currentPos = 0;
+        $terminatorFound = false;
+        do {
+            $info = array(
+                'submessageLength' => $messageBin[++$currentPos],
+                'rfAddr' => self::RFAddrParse($messageBin, $currentPos),
+                'somethingNotKnown' => $messageBin[++$currentPos],
+                'flags' => $messageBin[++$currentPos],
+            );
+
+            if ($info['submessageLength'] > 6) {
+                $info = array_merge($info, array(
+                    'valvePosition' => $messageBin[++$currentPos],
+                    'temperature' => $messageBin[++$currentPos],
+                    'dateUntil' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
+                    'timeUntil' => $messageBin[++$currentPos],
+                ));
+                if ($info['submessageLength'] > 9) { /* there is that !! sometimes */
+                    $info = array_merge($info, array(
+                        'actualTemperature' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
+                    ));
+                }
+                if ($info['submessageLength'] > 11) {
+                    $info = array_merge($info, array(
+                        'actualTemperature2' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
+                    ));
+                }
+            }
+            print_r($info);
+            echo PHP_EOL;
+
+            if ( $messageBin[$currentPos+1] == ord(chr("\0xce")) && $messageBin[$currentPos+2] == ord(chr("\0x00")) ) {
+                $terminatorFound = true;
+                echo 'TERMINATOR FOUND' . PHP_EOL;
+            }
+            
+        } while (!$terminatorFound);
+
     }
     
     public static function parse($message) {
@@ -215,7 +242,7 @@ class Maxparser {
         if (method_exists('Maxparser', 'parse' . $message[0])) {
             call_user_func(array('Maxparser','parse' . $message[0]), $message[1]);
         } else {
-            if (DEBUG) echo 'No parser for ' . $message[0] . ' Message' . PHP_EOL;
+            if (DEBUG) echo 'No parser for ' . $message[0] . ' message' . PHP_EOL;
         }
     }
     
