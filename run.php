@@ -13,12 +13,13 @@ echo 'OK' . PHP_EOL;
 $mqtt = new phpMQTT(MQTT_SERVER, MQTT_PORT, 0);
 $mqtt->connect_auto();
 
-
+$nextUpdate = time() + 5;
 //for ($i=0;$i<13;$i++) {
 for (;;) {
     
     $str = $connection->readMessage();
     Maxparser::parse($str);
+    
     $devices = Cube::getAllDevices();
     foreach ($devices as $device) {
         if ( $device->isUpdated() ) {
@@ -33,4 +34,14 @@ for (;;) {
         }
     }
     unset ($devices);
+    
+    if (time() >= $nextUpdate) {
+        // request update from cube
+        if (DEBUG) {
+            echo 'Sending l to Cube' . PHP_EOL;
+        }
+        Connection::writeMessage("l:\r\n");
+        
+        $nextUpdate = time() + 15;
+    }
 }

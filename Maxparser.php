@@ -251,10 +251,10 @@ class Maxparser {
     }
     
     public static function parse($message) {
-        $message = explode(':', trim($message));
-        if (strlen($message[0]) != 1 ) return;
+        $message = explode( ':', trim($message) );
+        if ( strlen($message[0]) != 1 ) return;
 
-        if (method_exists('Maxparser', 'parse' . $message[0])) {
+        if ( method_exists( 'Maxparser', 'parse' . $message[0] ) ) {
             call_user_func(array('Maxparser','parse' . $message[0]), $message[1]);
         } else {
             if (DEBUG) echo 'No parser for ' . $message[0] . ' message' . PHP_EOL;

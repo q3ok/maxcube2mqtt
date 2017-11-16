@@ -15,16 +15,24 @@ class Connection {
     
     public static function connect($ip, $port) {
         self::$socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        socket_set_option(self::$socket,SOL_SOCKET, SO_RCVTIMEO, array("sec"=>1, "usec"=>0));
         
         do {
             $sockStatus = socket_connect(self::$socket, $ip, $port);
         } while (!$sockStatus);
         
+        
+
+        
     }
     
     public static function readMessage() {
-        $str = socket_read(self::$socket, 2048, PHP_NORMAL_READ);
+        $str = socket_read(self::$socket, 2048, PHP_BINARY_READ);
         return $str;
+    }
+    
+    public static function writeMessage($msg) {
+        socket_write( self::$socket, $msg);
     }
     
 
