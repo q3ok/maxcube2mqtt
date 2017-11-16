@@ -191,48 +191,47 @@ class Maxparser {
         
     }
     
-    
     private static function parseL($message) {
         $message = base64_decode($message);
         $messageBin = unpack('C*', $message);
+        
+        print_r($messageBin);
+        echo PHP_EOL;
+        
         $currentPos = 0;
-        $terminatorFound = false;
         do {
-            $info = array(
-                'submessageLength' => $messageBin[++$currentPos],
+            $submessageLength = $messageBin[++$currentPos];
+            echo 'submessage detected, length: ' . $submessageLength;
+            echo PHP_EOL;
+            
+             $info = array(
                 'rfAddr' => self::RFAddrParse($messageBin, $currentPos),
                 'somethingNotKnown' => $messageBin[++$currentPos],
-                'flags' => $messageBin[++$currentPos],
+                'flags' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
             );
 
-            if ($info['submessageLength'] > 6) {
+            if ($submessageLength > 6) {
                 $info = array_merge($info, array(
                     'valvePosition' => $messageBin[++$currentPos],
                     'temperature' => $messageBin[++$currentPos],
                     'dateUntil' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
                     'timeUntil' => $messageBin[++$currentPos],
                 ));
-                if ($info['submessageLength'] > 9) { /* there is that !! sometimes */
+                if ($submessageLength > 11) { /* there is that !! sometimes */
                     $info = array_merge($info, array(
                         'actualTemperature' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
-                    ));
-                }
-                if ($info['submessageLength'] > 11) {
-                    $info = array_merge($info, array(
-                        'actualTemperature2' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
                     ));
                 }
             }
             print_r($info);
             echo PHP_EOL;
-
-            if ( $messageBin[$currentPos+1] == ord(chr("\0xce")) && $messageBin[$currentPos+2] == ord(chr("\0x00")) ) {
-                $terminatorFound = true;
-                echo 'TERMINATOR FOUND' . PHP_EOL;
-            }
             
-        } while (!$terminatorFound);
-
+        } while ( isset($messageBin[$currentPos+1]) && ($messageBin[$currentPos+1] != 206 && $messageBin[$currentPos+2] != 0));
+        /* protocol described by Bouni assumes that L message is always terminated with 0xce and 0x00
+         * but for me it looks like the message doesnt have the terminator
+         * probably it depends on Cube firmware version, but I am not sure :)
+         */
+        echo 'L message finished' . PHP_EOL;
     }
     
     public static function parse($message) {
