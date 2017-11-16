@@ -15,6 +15,8 @@ class ThermostaticHead extends Device {
     protected $MaxValveSetting;
     protected $ValveOffset;
     protected $WeeklyProgram;
+    protected $ValvePosition;
+    protected $ActualTemperature;
     
     public function setComfortTemperature($temp) {
         $this->ComfortTemperature = $temp;
@@ -58,6 +60,28 @@ class ThermostaticHead extends Device {
     
     public function setValveOffset($offset) {
         $this->ValveOffset = $offset;
+    }
+    
+    public function getValvePosition() {
+        return $this->ValvePosition;
+    }
+    
+    public function parseInfoData($info) { 
+        if (!parent::parseInfoData($info)) return false;
+        $this->ValvePosition = $info['valvePosition'];
+        if (isset($info['actualTemperature'])) {
+            $this->ActualTemperature = $info['actualTemperature'];
+        }
+        
+    }
+    
+    public function getPublishingItems() {
+        return array_merge(parent::getPublishingItems(), array(
+            'ComfortTemperature' => $this->ComfortTemperature,
+            'EcoTemperature' => $this->EcoTemperature,
+            'ValvePosition' => $this->ValvePosition,
+            'ActualTemperature' => $this->ActualTemperature,
+        ));
     }
     
 };

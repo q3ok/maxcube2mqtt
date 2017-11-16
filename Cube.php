@@ -2,6 +2,7 @@
 
 require_once('Room.php');
 require_once('ThermostaticHead.php');
+require_once('WindowSwitch.php');
 
 define( 'DEVICE_TYPE_CUBE', 0 );
 
@@ -59,6 +60,18 @@ class Cube {
      */
     public static function getAllRooms() {
         return self::$Rooms;
+    }
+    
+    /**
+     * @param int $RoomId
+     * @return Room
+     */
+    public static function getRoomById($RoomId) {
+        foreach (self::$Rooms as $room) {
+            if ($room->getId() == $RoomId) {
+                return $room;
+            }
+        }
     }
     
     /**

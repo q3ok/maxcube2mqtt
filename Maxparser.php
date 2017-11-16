@@ -109,6 +109,10 @@ class Maxparser {
                     $useDeviceClassName = 'ThermostaticHead';
                     break;
                 
+                case DEVICE_TYPE_SHUTTER:
+                    $useDeviceClassName = 'WindowSwitch';
+                    break;
+                
                 default:
                     $useDeviceClassName = 'Device';
                     break;
@@ -184,9 +188,6 @@ class Maxparser {
                 
             }
             
-            /*print_r($info);
-            echo PHP_EOL;*/
-            
         }
         
     }
@@ -195,19 +196,17 @@ class Maxparser {
         $message = base64_decode($message);
         $messageBin = unpack('C*', $message);
         
-        print_r($messageBin);
-        echo PHP_EOL;
-        
         $currentPos = 0;
         do {
             $submessageLength = $messageBin[++$currentPos];
-            echo 'submessage detected, length: ' . $submessageLength;
-            echo PHP_EOL;
+            if (DEBUG) {
+                echo 'L submessage detected, length: ' . $submessageLength . PHP_EOL;
+            }
             
              $info = array(
                 'rfAddr' => self::RFAddrParse($messageBin, $currentPos),
                 'somethingNotKnown' => $messageBin[++$currentPos],
-                'flags' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
+                'flags' => sprintf( "%08d", decbin($messageBin[++$currentPos])) . sprintf( "%08d", decbin($messageBin[++$currentPos])),
             );
 
             if ($submessageLength > 6) {
@@ -217,21 +216,38 @@ class Maxparser {
                     'dateUntil' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
                     'timeUntil' => $messageBin[++$currentPos],
                 ));
-                if ($submessageLength > 11) { /* there is that !! sometimes */
+                if ($submessageLength > 11) {
                     $info = array_merge($info, array(
                         'actualTemperature' => $messageBin[++$currentPos] . $messageBin[++$currentPos],
                     ));
                 }
             }
-            print_r($info);
-            echo PHP_EOL;
+            $info['valid']=substr($info['flags'],3,1);
+            $info['error']=substr($info['flags'],4,1);
+            $info['isAsnwer']=substr($info['flags'],5,1);
+            $info['statusInitialized']=substr($info['flags'],6,1);
+            $info['batteryLow']=substr($info['flags'],8,1);
+            $info['linkFault']=substr($info['flags'],9,1);
+            $info['panelLocked']=substr($info['flags'],10,1);
+            $info['gatewayKnown']=substr($info['flags'],11,1);
+            $info['dstEnabled']=substr($info['flags'],12,1);
+            $info['mode']=substr($info['flags'],14,2);
+            
+            $device = Cube::getDeviceByRFAddress($info['rfAddr']);
+            if (is_object($device)) {
+                $device->parseInfoData( $info );
+            } else {
+                if (DEBUG) {
+                    echo "L messages only for devices supported". PHP_EOL;
+                }
+            }
+            unset ($device);
             
         } while ( isset($messageBin[$currentPos+1]) && ($messageBin[$currentPos+1] != 206 && $messageBin[$currentPos+2] != 0));
         /* protocol described by Bouni assumes that L message is always terminated with 0xce and 0x00
          * but for me it looks like the message doesnt have the terminator
          * probably it depends on Cube firmware version, but I am not sure :)
          */
-        echo 'L message finished' . PHP_EOL;
     }
     
     public static function parse($message) {

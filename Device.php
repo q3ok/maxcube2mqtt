@@ -12,6 +12,12 @@ class Device {
     protected $SN;
     protected $Name;
     protected $RoomId;
+    protected $batteryLow;
+    protected $mode;
+    protected $linkFault;
+    protected $error;
+    protected $statusInitialized;
+    protected $updated = false;
     
     public function __construct($type, $rfaddr, $sn, $name, $roomid) {
         $this->Type = $type;
@@ -39,5 +45,32 @@ class Device {
     
     public function setRoomId($room_id) {
         $this->RoomId = $room_id;
+    }
+    
+    public function isUpdated() {
+        return $this->updated;
+    }
+    
+    public function clearUpdated() {
+        $this->updated = false;
+    }
+    
+    public function parseInfoData($info) {
+        if ($info['rfAddr'] != $this->getRFAddress()) return false;
+        $this->batteryLow = $info['batteryLow'];
+        $this->linkFault = $info['linkFault'];
+        $this->mode = $info['mode'];
+        $this->error = $info['error'];
+        $this->statusInitialized = $info['statusInitialized'];
+        $this->updated = true;
+        return true;
+    }
+    
+    public function getPublishingItems() {
+        return array(
+            'RFAddress' => $this->RFAddress,
+            'SN' => $this->SN,
+        );
+        
     }
 };
