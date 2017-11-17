@@ -1,0 +1,9 @@
+{
+    "name": "q3ok/maxcube2mqtt",
+    "description": "eq-3 MAX! Cube to MQTT wrapper",
+    "type": "project",
+    "require": {
+        "bluerhinos/phpmqtt": "dev-master"
+    },
+    "minimum-stability": "dev"
+}

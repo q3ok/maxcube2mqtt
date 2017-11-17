@@ -20,14 +20,11 @@ class Connection {
         do {
             $sockStatus = socket_connect(self::$socket, $ip, $port);
         } while (!$sockStatus);
-        
-        
 
-        
     }
     
     public static function readMessage() {
-        $str = socket_read(self::$socket, 2048, PHP_BINARY_READ);
+        socket_recv( self::$socket , $str, 2048, MSG_DONTWAIT );
         return $str;
     }
     
