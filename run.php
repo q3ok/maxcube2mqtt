@@ -7,16 +7,20 @@ require_once('Connection.php');
 require_once('Maxparser.php');
 
 $connection = Connection::getInstance();
-echo 'Connecting to ' . MAXCUBE_IP . '...';
+if (DEBUG) echo 'Connecting to ' . MAXCUBE_IP . '...';
 $connection->connect(MAXCUBE_IP, MAXCUBE_PORT);
-echo 'OK' . PHP_EOL;
+if (DEBUG) echo 'OK' . PHP_EOL;
 
 $mqttClient = new \Bluerhinos\phpMQTT(MQTT_SERVER, MQTT_PORT, 0);
-$mqttClient->connect_auto();
+$mqttClient->connect();
+
+define('MQTT_PING_INTERVAL', 5);
 
 $nextUpdate = time() + DATA_REQUEST_INTERVAL;
+$nextMQTTPing = time() + MQTT_PING_INTERVAL;
+
+$lastDutyCycle = null;
 for (;;) {
-    
     $str = $connection->readMessage();
     Maxparser::parse($str);
     
@@ -35,6 +39,16 @@ for (;;) {
     }
     unset ($devices);
     
+    if ( Cube::getDutyCycle() != $lastDutyCycle && !is_null(Cube::getDutyCycle())  ) {
+        $lastDutyCycle = Cube::getDutyCycle();
+        $mqttClient->publish(MQTT_TOPIC . 'DutyCycle', $lastDutyCycle, 1);
+    }
+    
+    if (time() >= $nextMQTTPing) {
+        $mqttClient->ping();
+        $nextMQTTPing = time() + MQTT_PING_INTERVAL;
+    }
+    
     if (time() >= $nextUpdate) {
         // request update from cube
         if (DEBUG) {
@@ -42,8 +56,8 @@ for (;;) {
             $connection->writeMessage("l:\r\n");
         }
             
-        
         $nextUpdate = time() + DATA_REQUEST_INTERVAL;
     }
+    
 }
 

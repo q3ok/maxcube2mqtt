@@ -17,6 +17,7 @@ class ThermostaticHead extends Device {
     protected $WeeklyProgram;
     protected $ValvePosition;
     protected $ActualTemperature;
+    protected $Mode;
     
     public function setComfortTemperature($temp) {
         $this->ComfortTemperature = $temp;
@@ -72,16 +73,37 @@ class ThermostaticHead extends Device {
         if (isset($info['actualTemperature'])) {
             $this->ActualTemperature = $info['actualTemperature'];
         }
+        switch ($info['mode']) {
+            case 00:
+                $this->Mode = 'Auto';
+                break;
+            case 01:
+                $this->Mode = 'Manual';
+                break;
+            case 10:
+                $this->Mode = 'Vacation';
+                break;
+            default:
+                $this->Mode = 'Boost';
+        }
         
     }
     
     public function getPublishingItems() {
-        return array_merge(parent::getPublishingItems(), array(
-            'ComfortTemperature' => $this->ComfortTemperature,
-            'EcoTemperature' => $this->EcoTemperature,
-            'ValvePosition' => $this->ValvePosition,
-            'ActualTemperature' => $this->ActualTemperature,
-        ));
+        $publishing_items = array(
+            'ComfortTemperature',
+            'EcoTemperature',
+            'ValvePosition',
+            'ActualTemperature',
+            'Mode',
+        );
+        $return = parent::getPublishingItems();
+        foreach ($publishing_items as $item) {
+            if (isset($this->$item)) {
+                $return[$item] = $this->$item;
+            }
+        } 
+        return $return;
     }
     
 };
