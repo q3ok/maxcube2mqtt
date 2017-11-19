@@ -53,8 +53,8 @@ for (;;) {
         // request update from cube
         if (DEBUG) {
             echo 'Sending l to Cube' . PHP_EOL;
-            $connection->writeMessage("l:\r\n");
         }
+        $connection->writeMessage("l:\r\n");
             
         $nextUpdate = time() + DATA_REQUEST_INTERVAL;
     }
