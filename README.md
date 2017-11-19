@@ -10,7 +10,9 @@ php composer.phar install
 cp config_example.php config.php
 vi config.php
 ```
-*Configuration options*
+
+### Configuration options
+
 `MAXCUBE_IP` IP Address of eQ-3 MAX! Cube
 
 `MAXCUBE_PORT` set to 62910, as its unchangeable Cube listening port
@@ -31,3 +33,6 @@ php run.php
 ```
 
 ## Credits
+
+### Protocol
+https://github.com/Bouni/max-cube-protocol
